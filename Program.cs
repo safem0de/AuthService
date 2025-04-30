@@ -1,12 +1,21 @@
 using AuthService.Data;
+using AuthService.IRepositories;
+using AuthService.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ Add DbContext + PostgreSQL
+// 1. ✅ Register DbContext + PostgreSQL
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
     
+// 2. ✅ Register Repository
+builder.Services.AddScoped<ILocalAdminRepository, LocalAdminRepository>();
+builder.Services.AddScoped<ILdapRepository, LdapRepository>();
+
+// 3. ✅ Add Controllers
+builder.Services.AddControllers();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -20,6 +29,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.MapControllers(); 
 
 var summaries = new[]
 {

@@ -7,9 +7,9 @@ public class LocalAdmin
     [Key]
     public required string UserId { get; set; }  
 
-    public required string PasswordHash { get; set; }
+    public string? PasswordHash { get; set; }
 
-    public required string Salt { get; set; }
+    public string Salt { get; set; } = string.Empty;
 
     public required string DisplayName { get; set; }
 
