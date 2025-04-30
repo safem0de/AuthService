@@ -16,7 +16,7 @@ namespace AuthService.Controllers
         }
 
         [HttpPost("sync-from-ad")]
-        public async Task<IActionResult> SyncFromAdAsync([FromBody] LocalAdminDto request)
+        public async Task<IActionResult> SyncFromAdAsync([FromBody] LoginData request)
         {
             if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
                 return BadRequest("Username and Password are required.");
@@ -30,7 +30,7 @@ namespace AuthService.Controllers
                 Console.WriteLine($"Message: {authResult.Message}");
                 Console.WriteLine($"DisplayName: {authResult.Data}");
                 Console.WriteLine("======================================");
-                
+
                 if (!authResult.Success)
                 {
                     return Unauthorized(new { message = authResult.Message });
