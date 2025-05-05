@@ -15,55 +15,6 @@ namespace AuthService.Repositories
             _configuration = configuration;
         }
 
-        // public Task<ServiceResponse<string>> AuthenticateAsync(string username, string password)
-        // {
-        //     var result = new ServiceResponse<string>();
-
-        //     var ldapServer = _configuration["Ldap:Host"];       // e.g. "ldap.company.com"
-        //     int ldapPort = 389;                                 // default fallback
-        //     int.TryParse(_configuration["Ldap:Port"], out ldapPort);
-        //     var domain = _configuration["Ldap:Domain"];         // e.g. "company.local"
-        //     string userDn = $"{domain}\\{username}";
-
-        //     Console.WriteLine(ldapServer);
-        //     Console.WriteLine(ldapPort);
-        //     Console.WriteLine(domain);
-        //     Console.WriteLine(userDn);
-
-        //     try
-        //     {
-        //         using var connection = new LdapConnection(new LdapDirectoryIdentifier(ldapServer, ldapPort));
-        //         connection.AuthType = AuthType.Negotiate;
-
-        //         var credential = new NetworkCredential(userDn, password);
-        //         connection.Bind(credential); // ⛳ Will throw if invalid
-
-        //         // ค้นหา displayName
-        //         var searchRequest = new SearchRequest(
-        //             _configuration["Ldap:SearchBase"], // e.g. "DC=company,DC=local"
-        //             $"(sAMAccountName={username})",
-        //             SearchScope.Subtree,
-        //             "displayName"
-        //         );
-
-        //         var response = (SearchResponse)connection.SendRequest(searchRequest);
-        //         var entry = response.Entries.Cast<SearchResultEntry>().FirstOrDefault();
-        //         var displayName = entry?.Attributes["displayName"]?[0]?.ToString() ?? username;
-
-        //         result.Data = displayName;
-        //         result.Success = true;
-        //         result.Message = "LDAP authentication successful";
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         result.Data = string.Empty;
-        //         result.Success = false;
-        //         result.Message = $"LDAP authentication failed: {ex.Message}";
-        //     }
-
-        //     return Task.FromResult(result);
-        // }
-
         public Task<ServiceResponse<LdapUserDto>> AuthenticateAsync(string username, string password)
         {
             var result = new ServiceResponse<LdapUserDto>();

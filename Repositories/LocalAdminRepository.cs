@@ -16,13 +16,79 @@ namespace AuthService.Repositories
             _context = context;
         }
 
-        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string plainPassword)
+        public async Task<ServiceResponse<LocalAdminDto>> LoginLocalAsync(string username, string plainPassword)
+        {
+            var response = new ServiceResponse<LocalAdminDto>();
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(plainPassword))
+                {
+                    response.Data = null!;
+                    response.Message = "Username and password are required.";
+                    response.Success = false;
+
+                    return response;
+                }
+
+                var user = await _context.LocalAdmins
+                                         .AsNoTracking()
+                                         .FirstOrDefaultAsync(u => u.Username.ToLower().Equals(username.ToLower()) && u.IsActive);
+
+                if (user == null)
+                {
+                    response.Data = null!;
+                    response.Message = "Invalid username or account is inactive.";
+                    response.Success = false;
+
+                    return response;
+                }
+
+                var hashed = PasswordHasher.Hash(plainPassword, user.Salt);
+
+                if (hashed != user.PasswordHash)
+                {
+                    response.Data = null!;
+                    response.Message = "Incorrect password.";
+                    response.Success = false;
+
+                    return response;
+                }
+                else
+                {
+                    response.Data = new LocalAdminDto
+                    {
+                        Username = user.Username,
+                        DisplayName = user.DisplayName,
+                        Email = user.Email,
+                        Department = user.Department,
+                        Title = user.Title,
+                        Role = user.Role,
+                        CreatedAt = user.CreatedAt,
+                        UpdatedAt = user.UpdatedAt
+                    };
+
+                    response.Message = "Login successful (local fallback).";
+                    response.Success = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = $"Error local login : {ex.Message}";
+                response.Data = null!;
+            }
+
+            return response;
+        }
+
+        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string plainPassword, string displayName = "", string email = "", string department = "", string title = "")
         {
             var response = new ServiceResponse<LocalAdmin>();
 
             try
             {
-                var existing = await _context.LocalAdmins.FirstOrDefaultAsync(u => u.UserId == username);
+                var existing = await _context.LocalAdmins.FirstOrDefaultAsync(u => u.Username.ToLower().Equals(username.ToLower()));
 
                 if (existing == null)
                 {
@@ -32,8 +98,11 @@ namespace AuthService.Repositories
 
                     var newAdmin = new LocalAdmin
                     {
-                        UserId = username,
-                        DisplayName = username,
+                        Username = username,
+                        DisplayName = displayName,
+                        Email = email,
+                        Department = department,
+                        Title = title,
                         PasswordHash = hash,
                         Salt = salt,
                         Role = "User",
@@ -57,11 +126,15 @@ namespace AuthService.Repositories
                         existing.PasswordHash = PasswordHasher.Hash(plainPassword, newSalt);
                         existing.UpdatedAt = DateTime.UtcNow;
                         response.Message = "Existing local admin updated with new password hash.";
+
+                        Console.WriteLine(response.Message);
                     }
                     else
                     {
                         existing.UpdatedAt = DateTime.UtcNow;
                         response.Message = "Local admin login successful. No password change.";
+
+                        Console.WriteLine(response.Message);
                     }
 
                     _context.LocalAdmins.Update(existing);

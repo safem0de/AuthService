@@ -13,7 +13,7 @@ namespace AuthService.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<LocalAdmin>().HasKey(x => x.UserId);
+            modelBuilder.Entity<LocalAdmin>().HasKey(x => x.Username);
             base.OnModelCreating(modelBuilder);
         }
     }

@@ -95,8 +95,11 @@ namespace AuthService.Data
 
                 var admin = new LocalAdmin
                 {
-                    UserId = userId,
+                    Username = userId,
                     DisplayName = displayName,
+                    Email = "admin@example.com",
+                    Department = "IT",
+                    Title = "System Administrator",
                     PasswordHash = passwordHash,
                     Salt = salt,
                     Role = "Admin",
