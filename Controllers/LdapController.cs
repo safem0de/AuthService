@@ -16,6 +16,17 @@ namespace AuthService.Controllers
             _ldapRepository = ldapRepository;
             _localAdminRepository = localAdminRepository;
         }
+        
+        [HttpPost("token-local")]
+        public async Task<IActionResult> TokenLocalAsync([FromBody] LoginData request)
+        {
+            var result = await _localAdminRepository.LoginAndGenerateTokenAsync(request.Username, request.Password);
+
+            if (!result.Success)
+                return Unauthorized(new { message = result.Message });
+
+            return Ok(result);
+        }
 
         [HttpPost("sync-from-ad")]
         public async Task<IActionResult> SyncFromAdAsync([FromBody] LoginData request)
@@ -47,7 +58,7 @@ namespace AuthService.Controllers
                     _ = await _localAdminRepository.SyncUserAfterAdLoginAsync(
                         request.Username, request.Password, displayName, email, department, title
                     );
-                    
+
                     return Ok(authResult);
                 }
             }

@@ -10,19 +10,55 @@ namespace AuthService.Repositories
     public class LocalAdminRepository : ILocalAdminRepository
     {
         private readonly AuthDbContext _context;
+        private readonly TokenService _tokenService;
 
-        public LocalAdminRepository(AuthDbContext context)
+        public LocalAdminRepository(AuthDbContext context, TokenService tokenService)
         {
             _context = context;
+            _tokenService = tokenService;
         }
 
-        public async Task<ServiceResponse<LocalAdminDto>> LoginLocalAsync(string username, string plainPassword)
+        public async Task<ServiceResponse<string>> LoginAndGenerateTokenAsync(string username, string password)
+        {
+            var response = new ServiceResponse<string>();
+            var loginResult = await LoginLocalAsync(username, password);
+
+            if (!loginResult.Success || loginResult.Data == null)
+            {
+                return new ServiceResponse<string>
+                {
+                    Success = false,
+                    Message = loginResult.Message,
+                    Data = string.Empty
+                };
+            }
+
+            var token = _tokenService.GenerateToken(new LocalAdminDto
+            {
+                Username = loginResult.Data.Username,
+                DisplayName = loginResult.Data.DisplayName,
+                Email = loginResult.Data.Email,
+                Department = loginResult.Data.Department,
+                Title = loginResult.Data.Title,
+                Role = loginResult.Data.Role,
+                CreatedAt = loginResult.Data.CreatedAt,
+                UpdatedAt = loginResult.Data.UpdatedAt
+            }, isFallback: true);
+
+            response.Data = token;
+            response.Success = true;
+            response.Message = "Login successful. Token generated.";
+
+            return response;
+        }
+
+        public async Task<ServiceResponse<LocalAdminDto>> LoginLocalAsync(string username, string password)
         {
             var response = new ServiceResponse<LocalAdminDto>();
 
             try
             {
-                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(plainPassword))
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 {
                     response.Data = null!;
                     response.Message = "Username and password are required.";
@@ -44,7 +80,7 @@ namespace AuthService.Repositories
                     return response;
                 }
 
-                var hashed = PasswordHasher.Hash(plainPassword, user.Salt);
+                var hashed = PasswordHasher.Hash(password, user.Salt);
 
                 if (hashed != user.PasswordHash)
                 {

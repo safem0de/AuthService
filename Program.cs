@@ -1,6 +1,8 @@
+using AuthService.Configurations;
 using AuthService.Data;
 using AuthService.IRepositories;
 using AuthService.Repositories;
+using AuthService.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +14,10 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 // 2. ✅ Register Repository
 builder.Services.AddScoped<ILocalAdminRepository, LocalAdminRepository>();
 builder.Services.AddScoped<ILdapRepository, LdapRepository>();
+
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+builder.Services.AddSingleton<TokenService>();
+
 
 // 3. ✅ Add Controllers
 builder.Services.AddControllers();
