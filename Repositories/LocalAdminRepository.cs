@@ -11,44 +11,65 @@ namespace AuthService.Repositories
     {
         private readonly AuthDbContext _context;
         private readonly TokenService _tokenService;
+        private readonly ILdapRepository _ldapRepository;
 
-        public LocalAdminRepository(AuthDbContext context, TokenService tokenService)
+        public LocalAdminRepository(AuthDbContext context, TokenService tokenService, ILdapRepository ldapRepository)
         {
             _context = context;
             _tokenService = tokenService;
+            _ldapRepository = ldapRepository;
         }
 
         public async Task<ServiceResponse<string>> LoginAndGenerateTokenAsync(string username, string password)
         {
             var response = new ServiceResponse<string>();
+
+            // 1. พยายามล็อกอินจาก local
             var loginResult = await LoginLocalAsync(username, password);
 
-            if (!loginResult.Success || loginResult.Data == null)
+            // 2. ถ้า login ไม่ผ่าน → ลอง sync จาก AD
+            if (!loginResult.Success)
             {
-                return new ServiceResponse<string>
+                var adResult = await _ldapRepository.AuthenticateAsync(username, password);
+                if (!adResult.Success || adResult.Data == null)
                 {
-                    Success = false,
-                    Message = loginResult.Message,
-                    Data = string.Empty
-                };
+                    return new ServiceResponse<string>
+                    {
+                        Success = false,
+                        Message = $"Local login failed: {loginResult.Message} | AD sync failed: {adResult.Message}",
+                        Data = string.Empty
+                    };
+                }
+
+                // 2.1 Sync ข้อมูลจาก AD มา LocalAdmin
+                await SyncUserAfterAdLoginAsync(
+                    username,
+                    password,
+                    adResult.Data.DisplayName,
+                    adResult.Data.Email ?? "",
+                    adResult.Data.Department ?? "",
+                    adResult.Data.Title ?? ""
+                );
+
+                // 2.2 ล็อกอินใหม่อีกครั้ง
+                loginResult = await LoginLocalAsync(username, password);
+                if (!loginResult.Success)
+                {
+                    return new ServiceResponse<string>
+                    {
+                        Success = false,
+                        Message = "Login failed even after AD sync.",
+                        Data = string.Empty
+                    };
+                }
             }
 
-            var token = _tokenService.GenerateToken(new LocalAdminDto
-            {
-                Username = loginResult.Data.Username,
-                DisplayName = loginResult.Data.DisplayName,
-                Email = loginResult.Data.Email,
-                Department = loginResult.Data.Department,
-                Title = loginResult.Data.Title,
-                Role = loginResult.Data.Role,
-                CreatedAt = loginResult.Data.CreatedAt,
-                UpdatedAt = loginResult.Data.UpdatedAt
-            }, isFallback: true);
+            // 3. Generate JWT Token
+            var token = _tokenService.GenerateToken(loginResult.Data!, isFallback: true);
 
-            response.Data = token;
             response.Success = true;
             response.Message = "Login successful. Token generated.";
-
+            response.Data = token;
             return response;
         }
 
@@ -118,23 +139,21 @@ namespace AuthService.Repositories
             return response;
         }
 
-        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string plainPassword, string displayName = "", string email = "", string department = "", string title = "")
+        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string password, string displayName = "", string email = "", string department = "", string title = "")
         {
             var response = new ServiceResponse<LocalAdmin>();
-
             try
             {
                 var existing = await _context.LocalAdmins.FirstOrDefaultAsync(u => u.Username.ToLower().Equals(username.ToLower()));
-
                 if (existing == null)
                 {
                     // สร้าง Salt และ Hash ใหม่
                     var salt = Guid.NewGuid().ToString("N");
-                    var hash = PasswordHasher.Hash(plainPassword, salt);
+                    var hash = PasswordHasher.Hash(password, salt);
 
                     var newAdmin = new LocalAdmin
                     {
-                        Username = username,
+                        Username = username.ToLower(),
                         DisplayName = displayName,
                         Email = email,
                         Department = department,
@@ -153,13 +172,13 @@ namespace AuthService.Repositories
                 else
                 {
                     // ถ้า password เปลี่ยน ให้ update hash และ salt
-                    var newHash = PasswordHasher.Hash(plainPassword, existing.Salt);
+                    var newHash = PasswordHasher.Hash(password, existing.Salt);
 
                     if (newHash != existing.PasswordHash)
                     {
                         var newSalt = Guid.NewGuid().ToString("N");
                         existing.Salt = newSalt;
-                        existing.PasswordHash = PasswordHasher.Hash(plainPassword, newSalt);
+                        existing.PasswordHash = PasswordHasher.Hash(password, newSalt);
                         existing.UpdatedAt = DateTime.UtcNow;
                         response.Message = "Existing local admin updated with new password hash.";
 
