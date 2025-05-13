@@ -10,7 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. ✅ Register DbContext + PostgreSQL
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-    
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<INetSuiteAuthRepository, NetSuiteAuthRepository>();
+
 // 2. ✅ Register Repository
 builder.Services.AddScoped<ILocalAdminRepository, LocalAdminRepository>();
 builder.Services.AddScoped<ILdapRepository, LdapRepository>();
