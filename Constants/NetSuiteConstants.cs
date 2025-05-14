@@ -9,5 +9,8 @@ namespace AuthService.Constants
         public static string GetAuthorizationUrl(string account) => string.Format(AuthorizationUrlFormat, account);
         public static string GetTokenUrl(string account) => string.Format(TokenUrlFormat, account);
         public static string GetApiBaseUrl(string account) => string.Format(BaseApiUrlFormat, account);
+        public static string GetCustomersUrl(string account) => $"{GetApiBaseUrl(account)}/customer";
+
+        public static string GetEmployeesUrl(string account) => $"{GetApiBaseUrl(account)}/employee";
     }
 }

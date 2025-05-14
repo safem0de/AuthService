@@ -16,7 +16,7 @@ dotnet add package System.IdentityModel.Tokens.Jwt
 ```
 
 ```bash
-dotnet watch run
+dotnet watch run --urls="https://0.0.0.0:5068"
 ```
 
 ```bash
@@ -36,6 +36,9 @@ openssl rand -base64 32
 ```
 * https://jwt.io/ (for token-local)
 
+cloudflared for test with Oracle NetSuite(Integration)
+```bash
 nerdctl run --rm -it cloudflare/cloudflared tunnel \
   --no-tls-verify \
   --url https://192.168.100.249:5068
+```

@@ -13,6 +13,7 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<INetSuiteAuthRepository, NetSuiteAuthRepository>();
+builder.Services.AddScoped<INetSuiteApiRepository, NetSuiteApiRepository>();
 
 // 2. ✅ Register Repository
 builder.Services.AddScoped<ILocalAdminRepository, LocalAdminRepository>();
