@@ -41,15 +41,20 @@ namespace AuthService.Repositories
 
         public async Task<TokenResponse?> ExchangeCodeForTokenAsync(string code)
         {
+            string account = _config["NetSuite:Account"]!;
             string clientId = _config["NetSuite:ConsumerKey"]!;
             string clientSecret = _config["NetSuite:ConsumerSecret"]!;
             string redirectUri = _config["NetSuite:CallbackUrl"]!;
-            string tokenUrl = _config["NetSuite:TokenUrl"]!;
 
-            var authHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
+            // ⚠️ สร้าง absolute URL จาก constant
+            string tokenUrl = string.Format(NetSuiteConstants.TokenUrlFormat, account);
+
+            // 🧠 Basic Auth Header
+            string authHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
 
             var request = new HttpRequestMessage(HttpMethod.Post, tokenUrl);
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authHeader);
+
             request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 { "grant_type", "authorization_code" },
@@ -57,12 +62,24 @@ namespace AuthService.Repositories
                 { "redirect_uri", redirectUri }
             });
 
-            var response = await _httpClient.SendAsync(request);
+            HttpResponseMessage response;
+
+            try
+            {
+                response = await _httpClient.SendAsync(request);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ HTTP request failed:");
+                Console.WriteLine(ex);
+                return null;
+            }
+
             var responseJson = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine("❌ Token request failed:");
+                Console.WriteLine($"❌ Token exchange failed ({response.StatusCode}):");
                 Console.WriteLine(responseJson);
                 return null;
             }
@@ -70,7 +87,19 @@ namespace AuthService.Repositories
             Console.WriteLine("✅ Token response received:");
             Console.WriteLine(responseJson);
 
-            return JsonSerializer.Deserialize<TokenResponse>(responseJson);
+            try
+            {
+                return JsonSerializer.Deserialize<TokenResponse>(responseJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (JsonException jsonEx)
+            {
+                Console.WriteLine("❌ Failed to deserialize token response:");
+                Console.WriteLine(jsonEx);
+                return null;
+            }
         }
     }
 }

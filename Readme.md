@@ -35,3 +35,7 @@ dotnet ef database drop
 openssl rand -base64 32
 ```
 * https://jwt.io/ (for token-local)
+
+nerdctl run --rm -it cloudflare/cloudflared tunnel \
+  --no-tls-verify \
+  --url https://192.168.100.249:5068
