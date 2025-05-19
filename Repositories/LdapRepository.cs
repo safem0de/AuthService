@@ -168,8 +168,8 @@ namespace AuthService.Repositories
 
                 connection.Dispose();
 
-                result.Data = data;
-                result.Message = "Get All User LDAP Success";
+                result.Data = data.OrderBy(d => d.DisplayName).ToList();
+                result.Message = $"Get All Users ({data.Count}) LDAP Success";
                 result.Success = true;
 
             }
@@ -186,7 +186,6 @@ namespace AuthService.Repositories
                 var _msg = $"❌ General Error: {ex.Message}";
                 Console.WriteLine(_msg);
 
-                result.Data = data;
                 result.Message = _msg;
                 result.Success = false;
             }

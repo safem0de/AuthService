@@ -13,16 +13,29 @@ namespace AuthService.Constants
         public static string GetEmployeesUrl(string account) => $"{GetApiBaseUrl(account)}/employee";
 
         public static readonly List<string> excludeWords = new List<string> {
+            "3MGSR",
             "BPC",
+            "BSCSurat",
+            "btlfl",
             "CSS Temp",
             "Driver",
+            "Fax",
+            "FTL",
             "Guest",
+            "HRM",
+            "Helpdesk",
+            "Import",
             "Mail",
             "Meeting Zoom Room",
             "noreply",
             "noreply2",
+            "Operator",
+            "Payroll",
+            "salecen",
             "Test",
+            "WH-",
             "Zoom"
         };
+
     }
 }
