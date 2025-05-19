@@ -16,6 +16,15 @@ namespace AuthService.Controllers
             _ldapRepository = ldapRepository;
             _localAdminRepository = localAdminRepository;
         }
+        [HttpGet("users")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var response = await _ldapRepository.GetAllUserAsync();
+            if (!response.Success)
+                return StatusCode(500, response);
+
+            return Ok(response);
+        }
         
         [HttpPost("token-local")]
         public async Task<IActionResult> TokenLocalAsync([FromBody] LoginData request)

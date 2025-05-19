@@ -30,7 +30,7 @@ dotnet ef database update
 ```bash
 rm -r Data/Migrations       # Mac or Linux
 or
-rmdir /s /q Data\Migrations # Windows
+remove folder Data\Migrations # Windows
 dotnet ef database drop
 ```
 * Generate Random Token String

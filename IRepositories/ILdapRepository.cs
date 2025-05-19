@@ -6,5 +6,7 @@ namespace AuthService.IRepositories
     public interface ILdapRepository
     {
         Task<ServiceResponse<LdapUserDto>> AuthenticateAsync(string username, string password);
+
+        Task<ServiceResponse<List<LdapUserDto>>> GetAllUserAsync();
     }
 }

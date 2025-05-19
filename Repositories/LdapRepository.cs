@@ -3,6 +3,7 @@ using System.Net;
 using AuthService.IRepositories;
 using AuthService.Models.Dtos;
 using AuthService.Services;
+using AuthService.Constants;
 
 namespace AuthService.Repositories
 {
@@ -93,6 +94,101 @@ namespace AuthService.Repositories
                 result.Success = false;
                 result.Data = null!;
                 result.Message = $"General error: {ex.Message}";
+            }
+
+            return Task.FromResult(result);
+        }
+
+        public Task<ServiceResponse<List<LdapUserDto>>> GetAllUserAsync()
+        {
+            var result = new ServiceResponse<List<LdapUserDto>>();
+            var data = new List<LdapUserDto>();
+            var _excludeWords = NetSuiteConstants.excludeWords;
+
+            // ✅ ข้อมูลเชื่อมต่อ LDAP
+            string ldapServer = _configuration["Ldap:Server"]!;
+            string username = _configuration["Ldap:User"]!; // UPN format
+            string password = _configuration["Ldap:Pass"]!;
+            string searchBase = _configuration["Ldap:SearchBase"]!;
+
+            try
+            {
+                // ✅ ตั้งค่า LDAP Connection
+                var credential = new NetworkCredential(username, password);
+                var connection = new LdapConnection(ldapServer)
+                {
+                    AuthType = AuthType.Negotiate, // หรือ Basic
+                    Credential = credential,
+                    Timeout = TimeSpan.FromSeconds(10)
+                };
+
+                connection.Bind(); // 🔐 Login
+
+                // ✅ ค้นหา user objects
+                var request = new SearchRequest(
+                    searchBase,
+                    // "(objectClass=user)",
+                    "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))",
+                    SearchScope.Subtree,
+                    new[] { "sAMAccountName", "displayName", "department", "mail", "title" }
+                );
+
+                var response = (SearchResponse)connection.SendRequest(request);
+                foreach (SearchResultEntry entry in response.Entries)
+                {
+                    var sam = entry.Attributes["sAMAccountName"]?[0]?.ToString();
+                    var display = entry.Attributes["displayName"]?[0]?.ToString();
+                    var department = entry.Attributes["department"]?[0]?.ToString();
+                    var email = entry.Attributes["mail"]?[0]?.ToString();
+                    var title = entry.Attributes["title"]?[0]?.ToString();
+
+                    if (string.IsNullOrEmpty(sam) ||
+                        _excludeWords.Any(ex => sam.Contains(ex, StringComparison.OrdinalIgnoreCase)) ||
+                        string.IsNullOrEmpty(display) ||
+                        string.IsNullOrEmpty(email) ||
+                        string.IsNullOrEmpty(title) ||
+                        _excludeWords.Any(ex => title.Contains(ex, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Console.WriteLine(
+                            $"⛔ Skipped: {sam} | {display} | {email} | {department} | {title}");
+                        continue;
+                    }
+
+                    var userItem = new LdapUserDto
+                    {
+                        Username = sam.ToLower(),
+                        DisplayName = display,
+                        Email = email,
+                        Department = department,
+                        Title = title,
+                    };
+
+                    data.Add(userItem);
+                }
+
+                connection.Dispose();
+
+                result.Data = data;
+                result.Message = "Get All User LDAP Success";
+                result.Success = true;
+
+            }
+            catch (LdapException ex)
+            {
+                var _msg = $"❌ LDAP Error: {ex.Message}";
+                Console.WriteLine(_msg);
+
+                result.Message = _msg;
+                result.Success = false;
+            }
+            catch (Exception ex)
+            {
+                var _msg = $"❌ General Error: {ex.Message}";
+                Console.WriteLine(_msg);
+
+                result.Data = data;
+                result.Message = _msg;
+                result.Success = false;
             }
 
             return Task.FromResult(result);

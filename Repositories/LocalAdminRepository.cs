@@ -161,6 +161,7 @@ namespace AuthService.Repositories
                         PasswordHash = hash,
                         Salt = salt,
                         Role = "User",
+                        NetSuiteId = -1,
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };

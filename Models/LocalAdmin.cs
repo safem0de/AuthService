@@ -14,6 +14,7 @@ namespace AuthService.Models
         public string Salt { get; set; } = string.Empty;
         public string Role { get; set; } = "User";
         public bool IsActive { get; set; } = true;
+        public int NetSuiteId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
     }

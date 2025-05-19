@@ -104,6 +104,7 @@ namespace AuthService.Data
                     Salt = salt,
                     Role = "Admin",
                     IsActive = true,
+                    NetSuiteId = 0,
                     CreatedAt = DateTime.UtcNow
                 };
 

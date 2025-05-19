@@ -11,5 +11,18 @@ namespace AuthService.Constants
         public static string GetApiBaseUrl(string account) => string.Format(BaseApiUrlFormat, account);
         public static string GetCustomersUrl(string account) => $"{GetApiBaseUrl(account)}/customer";
         public static string GetEmployeesUrl(string account) => $"{GetApiBaseUrl(account)}/employee";
+
+        public static readonly List<string> excludeWords = new List<string> {
+            "BPC",
+            "CSS Temp",
+            "Driver",
+            "Guest",
+            "Mail",
+            "Meeting Zoom Room",
+            "noreply",
+            "noreply2",
+            "Test",
+            "Zoom"
+        };
     }
 }

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AuthService.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    [Migration("20250505034003_InitLocalAdmin")]
+    [Migration("20250516044905_InitLocalAdmin")]
     partial class InitLocalAdmin
     {
         /// <inheritdoc />
@@ -47,6 +47,9 @@ namespace AuthService.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("NetSuiteId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
