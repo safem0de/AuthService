@@ -101,6 +101,14 @@ namespace AuthService.Repositories
                     return response;
                 }
 
+                if (string.IsNullOrWhiteSpace(user.Salt) || string.IsNullOrWhiteSpace(user.PasswordHash))
+                {
+                    response.Data = null!;
+                    response.Message = "User data incomplete. Please contact admin.";
+                    response.Success = false;
+                    return response;
+                }
+
                 var hashed = PasswordHasher.Hash(password, user.Salt);
 
                 if (hashed != user.PasswordHash)
@@ -144,61 +152,58 @@ namespace AuthService.Repositories
             var response = new ServiceResponse<LocalAdmin>();
             try
             {
-                var existing = await _context.LocalAdmins.FirstOrDefaultAsync(u => u.Username.ToLower().Equals(username.ToLower()));
+                var existing = await _context.LocalAdmins
+                .Where(u => u.NetSuiteId > 0)
+                .FirstOrDefaultAsync(u => u.Username.ToLower().Equals(username.ToLower()));
+
                 if (existing == null)
                 {
-                    // สร้าง Salt และ Hash ใหม่
-                    var salt = Guid.NewGuid().ToString("N");
-                    var hash = PasswordHasher.Hash(password, salt);
+                    response.Data = null!;
+                    response.Success = false;
+                    response.Message = "บัญชีนี้ยังไม่ถูกอนุมัติในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบ AD หรือ Oracle NetSuite";
 
-                    var newAdmin = new LocalAdmin
-                    {
-                        Username = username.ToLower(),
-                        DisplayName = displayName,
-                        Email = email,
-                        Department = department,
-                        Title = title,
-                        PasswordHash = hash,
-                        Salt = salt,
-                        Role = "User",
-                        NetSuiteId = -1,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    };
-
-                    _context.LocalAdmins.Add(newAdmin);
-                    response.Data = newAdmin;
-                    response.Message = "New local admin created from AD login.";
+                    return response;
                 }
                 else
                 {
-                    // ถ้า password เปลี่ยน ให้ update hash และ salt
-                    var newHash = PasswordHasher.Hash(password, existing.Salt);
+                    var shouldUpdatePassword = false;
 
-                    if (newHash != existing.PasswordHash)
+                    if (string.IsNullOrWhiteSpace(existing.Salt) || string.IsNullOrWhiteSpace(existing.PasswordHash))
+                    {
+                        // ⚠️ เคย prepare ไว้แต่ยังไม่มี hash/salt → login ครั้งแรก
+                        shouldUpdatePassword = true;
+                        response.Message = "First time login - setting password hash.";
+                    }
+                    else
+                    {
+                        // 👇 ถ้าเคย login แล้ว → เช็คว่า password เปลี่ยนไหม
+                        var newHash = PasswordHasher.Hash(password, existing.Salt);
+                        if (newHash != existing.PasswordHash)
+                        {
+                            shouldUpdatePassword = true;
+                            response.Message = "Password changed - updating hash.";
+                        }
+                        else
+                        {
+                            response.Message = "User re-logged in - updated timestamp.";
+                        }
+                    }
+
+                    if (shouldUpdatePassword)
                     {
                         var newSalt = Guid.NewGuid().ToString("N");
                         existing.Salt = newSalt;
                         existing.PasswordHash = PasswordHasher.Hash(password, newSalt);
-                        existing.UpdatedAt = DateTime.UtcNow;
-                        response.Message = "Existing local admin updated with new password hash.";
-
-                        Console.WriteLine(response.Message);
-                    }
-                    else
-                    {
-                        existing.UpdatedAt = DateTime.UtcNow;
-                        response.Message = "Local admin login successful. No password change.";
-
-                        Console.WriteLine(response.Message);
                     }
 
+                    existing.UpdatedAt = DateTime.UtcNow;
                     _context.LocalAdmins.Update(existing);
                     response.Data = existing;
                 }
 
                 await _context.SaveChangesAsync();
                 response.Success = true;
+
             }
             catch (Exception ex)
             {
@@ -208,6 +213,11 @@ namespace AuthService.Repositories
             }
 
             return response;
+        }
+
+        public Task<ServiceResponse<LocalAdmin>> SyncUserBeforeAdLoginAsync(string displayName, string email, string department, string title)
+        {
+            throw new NotImplementedException();
         }
     }
 }
