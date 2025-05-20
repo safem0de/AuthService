@@ -1,6 +1,7 @@
 using AuthService.Data;
 using AuthService.IRepositories;
 using AuthService.Models;
+using AuthService.Models.Dtos;
 using AuthService.Services;
 using AuthService.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -215,9 +216,50 @@ namespace AuthService.Repositories
             return response;
         }
 
-        public Task<ServiceResponse<LocalAdmin>> SyncUserBeforeAdLoginAsync(string displayName, string email, string department, string title)
+        public async Task<ServiceResponse<string>> SyncUserBeforeAdLoginAsync(List<LdapUserDto> users)
         {
-            throw new NotImplementedException();
+            var response = new ServiceResponse<string>();
+            try
+            {
+                foreach (var user in users)
+                {
+                    var username = user.Username.ToLower();
+
+                    var exists = await _context.LocalAdmins.AnyAsync(u => u.Username.ToLower() == username);
+
+                    if (!exists)
+                    {
+                        var newUser = new LocalAdmin
+                        {
+                            Username = username,
+                            DisplayName = user.DisplayName,
+                            Email = user.Email!,
+                            Department = user.Department!,
+                            Title = user.Title!,
+                            Role = "User",
+                            NetSuiteId = -1,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                            // ❌ ยังไม่ set PasswordHash และ Salt รอ Login
+                        };
+
+                        await _context.LocalAdmins.AddAsync(newUser);
+                    }
+                }
+
+                var inserted = await _context.SaveChangesAsync();
+                response.Success = true;
+                response.Message = $"✅ Synced {inserted} users into local database.";
+                response.Data = $"{inserted} users added.";
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = $"❌ Sync error: {ex.Message}";
+                response.Data = null!;
+            }
+
+            return response;
         }
     }
 }
