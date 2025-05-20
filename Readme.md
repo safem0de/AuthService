@@ -28,9 +28,9 @@ dotnet ef database update
 ```
 * remove migration
 ```bash
-rm -r Data/Migrations       # Mac or Linux
+rm -r Migrations       # Mac or Linux
 or
-remove folder Data\Migrations # Windows
+remove folder Migrations # Windows
 dotnet ef database drop
 ```
 * Generate Random Token String

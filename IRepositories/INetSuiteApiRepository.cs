@@ -4,7 +4,10 @@ namespace AuthService.IRepositories
 {
     public interface INetSuiteApiRepository
     {
-        Task<ServiceResponse<object?>> GetCustomersAsync(string accessToken);
+        /* OAuth1.0 */
+        Task<ServiceResponse<string>> CallSuiteQLAsync(string query);
+        /* OAuth2.0 */
+        Task<ServiceResponse<object?>> GetCustomersAsync(string accessToken); 
 
         Task<ServiceResponse<object?>> GetEmployeesAsync(string accessToken);
     }
