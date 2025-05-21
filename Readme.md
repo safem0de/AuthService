@@ -45,3 +45,15 @@ nerdctl run --rm -it cloudflare/cloudflared tunnel \
   --no-tls-verify \
   --url https://192.168.100.249:5068
 ```
+
+### OAuth1.0
+```bash
+| Field                | Value            |
+| -------------------- | ---------------- |
+| Consumer Key         | จาก Integration  |
+| Consumer Secret      | จาก Integration  |
+| Token                | จาก Access Token |
+| Token Secret         | จาก Access Token |
+| Signature Method     | HMAC-SHA256      |
+| Add params to header | Yes              |
+```

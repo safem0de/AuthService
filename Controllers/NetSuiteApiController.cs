@@ -16,7 +16,7 @@ namespace AuthService.Controllers
             _apiRepo = apiRepo;
         }
 
-        [HttpPost("suiteql")]
+        [HttpPost("SuiteQL")]
         public async Task<IActionResult> RunSuiteQL([FromBody] JsonElement body)
         {
             try

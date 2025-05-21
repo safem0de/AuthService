@@ -37,7 +37,7 @@ namespace AuthService.Controllers
             return Ok(result);
         }
 
-        [HttpPost("sync-from-ad")]
+        [HttpPost("sync-after-ad")]
         public async Task<IActionResult> SyncFromAdAsync([FromBody] LoginData request)
         {
             if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
@@ -65,7 +65,7 @@ namespace AuthService.Controllers
                     var title = authResult.Data.Title ?? string.Empty;
 
                     _ = await _localAdminRepository.SyncUserAfterAdLoginAsync(
-                        request.Username, request.Password, displayName, email, department, title
+                        request.Username, request.Password//, displayName, email, department, title
                     );
 
                     return Ok(authResult);

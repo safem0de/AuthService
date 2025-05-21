@@ -20,65 +20,80 @@ namespace AuthService.Repositories
 
         public async Task<ServiceResponse<string>> CallSuiteQLAsync(string query)
         {
-            var fullUri = NetSuiteConstants.GetSuiteQLApiBaseUrl(_config["NetSuite:Account"]!);
+            var accountId = _config["NetSuite:Account"]!;
+            var consumerKey = _config["NetSuite:ConsumerKey"]!;
+            var consumerSecret = _config["NetSuite:ConsumerSecret"]!;
+            var tokenId = _config["NetSuite:TokenId"]!;
+            var tokenSecret = _config["NetSuite:TokenSecret"]!;
 
+            var baseUrl = $"https://{accountId}.suitetalk.api.netsuite.com/services/rest/query/v1/suiteql";
+
+            // 🔐 OAuth params
             var nonce = Guid.NewGuid().ToString("N");
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var signatureMethod = "HMAC-SHA256";
+            var version = "1.0";
 
-            var oauthParams = new SortedDictionary<string, string>
-            {
-                { "oauth_consumer_key", _config["NetSuite:ConsumerKey"]! },
-                { "oauth_token", _config["NetSuite:TokenId"]! },
-                { "oauth_nonce", nonce },
-                { "oauth_timestamp", timestamp },
-                { "oauth_signature_method", "HMAC-SHA256" },
-                { "oauth_version", "1.0" },
-                { "realm", _config["NetSuite:Account"]! }
-            };
+            // 🔧 Sorted dictionary for signature base string
+            var parameters = new SortedDictionary<string, string>
+        {
+            { "oauth_consumer_key", consumerKey },
+            { "oauth_token", tokenId },
+            { "oauth_nonce", nonce },
+            { "oauth_timestamp", timestamp },
+            { "oauth_signature_method", signatureMethod },
+            { "oauth_version", version },
+            { "realm", accountId }
+        };
 
-            // Step 1: Build signature base string
-            var signatureBase = $"POST&{Uri.EscapeDataString(fullUri)}&" + Uri.EscapeDataString(string.Join("&", oauthParams
-                .OrderBy(x => x.Key)
-                .Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}")));
+            // 🔐 Generate signature base string
+            var encodedParams = string.Join("&", parameters
+                .OrderBy(kvp => kvp.Key)
+                .Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
 
-            // Step 2: Sign it
-            var signingKey = $"{Uri.EscapeDataString(_config["NetSuite:ConsumerSecret"]!)}&{Uri.EscapeDataString(_config["NetSuite:TokenSecret"]!)}";
+            var signatureBaseString = $"POST&{Uri.EscapeDataString(baseUrl)}&{Uri.EscapeDataString(encodedParams)}";
+
+            // 🔐 Generate signing key and signature
+            var signingKey = $"{Uri.EscapeDataString(consumerSecret)}&{Uri.EscapeDataString(tokenSecret)}";
             using var hasher = new HMACSHA256(Encoding.ASCII.GetBytes(signingKey));
-            var signatureBytes = hasher.ComputeHash(Encoding.ASCII.GetBytes(signatureBase));
+            var signatureBytes = hasher.ComputeHash(Encoding.ASCII.GetBytes(signatureBaseString));
             var signature = Convert.ToBase64String(signatureBytes);
 
-            // Step 3: Add signature to params
-            oauthParams.Add("oauth_signature", signature);
+            // ➕ Add signature to parameters
+            parameters.Add("oauth_signature", signature);
 
-            // Step 4: Construct Authorization header
-            var authHeader = "OAuth " + string.Join(", ", oauthParams.Select(kvp =>
-                $"{Uri.EscapeDataString(kvp.Key)}=\"{Uri.EscapeDataString(kvp.Value)}\""));
+            // 🛂 Create Authorization header (NO Uri.Escape on key/value here!)
+            var authHeader = "OAuth " + string.Join(", ", parameters
+                .Select(kvp => $"{kvp.Key}=\"{Uri.EscapeDataString(kvp.Value)}\""));
 
+            // 🚀 Send HTTP request
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("OAuth", authHeader.Replace("OAuth ", ""));
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("Prefer", "transient");
 
-            var payload = new
-            {
-                q = query
-            };
-
-            var json = System.Text.Json.JsonSerializer.Serialize(payload);
+            var payload = new { q = query };
+            var json = JsonSerializer.Serialize(payload);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await client.PostAsync(fullUri, content);
+            var response = await client.PostAsync(baseUrl, content);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"❌ Failed: {response.StatusCode}\n{responseBody}");
+                return new ServiceResponse<string>
+                {
+                    Success = false,
+                    Message = $"❌ Failed: {response.StatusCode}\n{responseBody}",
+                    Data = null!
+                };
             }
 
             return new ServiceResponse<string>
             {
-                Data = responseBody,
                 Success = true,
-                Message = "SuiteQL query executed successfully"
+                Message = "✅ SuiteQL query success",
+                Data = responseBody
             };
         }
 

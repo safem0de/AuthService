@@ -45,11 +45,11 @@ namespace AuthService.Repositories
                 // 2.1 Sync ข้อมูลจาก AD มา LocalAdmin
                 await SyncUserAfterAdLoginAsync(
                     username,
-                    password,
-                    adResult.Data.DisplayName,
-                    adResult.Data.Email ?? "",
-                    adResult.Data.Department ?? "",
-                    adResult.Data.Title ?? ""
+                    password
+                    // adResult.Data.DisplayName,
+                    // adResult.Data.Email ?? "",
+                    // adResult.Data.Department ?? "",
+                    // adResult.Data.Title ?? ""
                 );
 
                 // 2.2 ล็อกอินใหม่อีกครั้ง
@@ -148,13 +148,13 @@ namespace AuthService.Repositories
             return response;
         }
 
-        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string password, string displayName = "", string email = "", string department = "", string title = "")
+        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string password)
         {
             var response = new ServiceResponse<LocalAdmin>();
             try
             {
                 var existing = await _context.LocalAdmins
-                .Where(u => u.NetSuiteId > 0)
+                // .Where(u => u.NetSuiteId > 0)
                 .FirstOrDefaultAsync(u => u.Username.ToLower().Equals(username.ToLower()));
 
                 if (existing == null)
