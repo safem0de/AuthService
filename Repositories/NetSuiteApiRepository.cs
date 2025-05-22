@@ -248,5 +248,6 @@ namespace AuthService.Repositories
                 Data = JsonSerializer.Deserialize<object>(responseBody)
             };
         }
+
     }
 }

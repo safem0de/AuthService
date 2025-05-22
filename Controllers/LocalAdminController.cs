@@ -18,7 +18,7 @@ namespace AuthService.Controllers
         }
 
         [HttpPost("sync-users")]
-        public async Task<IActionResult> SyncFromAd()
+        public async Task<IActionResult> SyncUserFromAd()
         {
             var users = await _ldapRepository.GetAllUserAsync();
             var result = await _localAdminRepo.SyncUserBeforeAdLoginAsync(users.Data!);
@@ -34,6 +34,23 @@ namespace AuthService.Controllers
                 return Unauthorized(new { message = result.Message });
 
             return Ok(result);
+        }
+
+        [HttpPost("token-local")]
+        public async Task<IActionResult> TokenLocalAsync([FromBody] LoginData request)
+        {
+            var result = await _localAdminRepo.LoginAndGenerateTokenAsync(request.Username, request.Password);
+            if (!result.Success)
+                return Unauthorized(new { message = result.Message });
+
+            return Ok(result);
+        }
+
+        [HttpPatch("user-patch-NetSuiteId")]
+        public async Task<IActionResult> PatchUserAsync()
+        {
+            await _localAdminRepo.SyncNetSuiteIdForAllUsersAsync();
+            return Ok();
         }
     }
 }

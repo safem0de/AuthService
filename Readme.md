@@ -46,7 +46,7 @@ nerdctl run --rm -it cloudflare/cloudflared tunnel \
   --url https://192.168.100.249:5068
 ```
 
-### OAuth1.0
+### OAuth1.0 (NetSuite)
 ```bash
 | Field                | Value            |
 | -------------------- | ---------------- |
@@ -56,4 +56,20 @@ nerdctl run --rm -it cloudflare/cloudflared tunnel \
 | Token Secret         | จาก Access Token |
 | Signature Method     | HMAC-SHA256      |
 | Add params to header | Yes              |
+```
+
+## Example SuiteQL
+```bash
+## customer
+{
+    "q": "SELECT TOP 10 * FROM customer"
+}
+## employee
+{
+    "q": "SELECT TOP 10 * FROM employee"
+}
+## partner
+{
+    "q": "SELECT TOP 10 * FROM partner"
+}
 ```

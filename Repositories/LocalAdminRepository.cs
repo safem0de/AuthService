@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AuthService.Data;
 using AuthService.IRepositories;
 using AuthService.Models;
@@ -14,11 +15,14 @@ namespace AuthService.Repositories
         private readonly TokenService _tokenService;
         private readonly ILdapRepository _ldapRepository;
 
-        public LocalAdminRepository(AuthDbContext context, TokenService tokenService, ILdapRepository ldapRepository)
+        private readonly INetSuiteApiRepository _netSuiteApiRepository;
+
+        public LocalAdminRepository(AuthDbContext context, TokenService tokenService, ILdapRepository ldapRepository, INetSuiteApiRepository netSuiteApiRepository)
         {
             _context = context;
             _tokenService = tokenService;
             _ldapRepository = ldapRepository;
+            _netSuiteApiRepository = netSuiteApiRepository;
         }
 
         public async Task<ServiceResponse<string>> LoginAndGenerateTokenAsync(string username, string password)
@@ -46,10 +50,10 @@ namespace AuthService.Repositories
                 await SyncUserAfterAdLoginAsync(
                     username,
                     password
-                    // adResult.Data.DisplayName,
-                    // adResult.Data.Email ?? "",
-                    // adResult.Data.Department ?? "",
-                    // adResult.Data.Title ?? ""
+                // adResult.Data.DisplayName,
+                // adResult.Data.Email ?? "",
+                // adResult.Data.Department ?? "",
+                // adResult.Data.Title ?? ""
                 );
 
                 // 2.2 ล็อกอินใหม่อีกครั้ง
@@ -146,6 +150,59 @@ namespace AuthService.Repositories
             }
 
             return response;
+        }
+
+        public async Task SyncNetSuiteIdForAllUsersAsync()
+        {
+            var users = await _context.LocalAdmins
+                      .Where(u => u.IsActive && u.NetSuiteId == -1)
+                      .ToListAsync();
+
+            foreach (var user in users)
+            {
+                try
+                {
+                    var fullname = user.DisplayName.Replace("TH-BTL", "").Replace(",", "").Trim();
+                    var query = $"SELECT id, email FROM employee WHERE LOWER(entityid) = LOWER('{fullname}')";
+                    var result = await _netSuiteApiRepository.CallSuiteQLAsync(query);
+
+                    var options = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var json = result.Data?.ToString();
+                    if (result.Success && !string.IsNullOrWhiteSpace(json))
+                    {
+                        var parsed = JsonSerializer.Deserialize<SuiteQLResponse<EmployeeDto>>(json);
+                        Console.WriteLine(JsonSerializer.Serialize(parsed, options));
+
+                        var notfoundemail = parsed!.Items?.FirstOrDefault(i => string.IsNullOrWhiteSpace(i.Email));
+                        var foundemail = parsed!.Items?.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.Email));
+                        
+                        if (foundemail != null)
+                        {
+                            Console.WriteLine($"✅ ID: {foundemail.Id}, Email: {foundemail.Email}");
+                            user.NetSuiteId = int.Parse(foundemail.Id!);
+                            user.UpdatedAt = DateTime.UtcNow;
+                        }
+
+                        if (notfoundemail != null)
+                        {
+                            Console.WriteLine($"✅ ID: {notfoundemail.Id}, Email: {notfoundemail.Email}");
+                            user.NetSuiteId = int.Parse(notfoundemail.Id!);
+                            user.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Error syncing {user.Username}: {ex.Message}");
+                }
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string password)
