@@ -1,3 +1,4 @@
+using System.Net;
 using AuthService.Services;
 
 namespace AuthService.IRepositories
@@ -6,6 +7,9 @@ namespace AuthService.IRepositories
     {
         /* OAuth1.0 */
         Task<ServiceResponse<object>> CallSuiteQLAsync(string query);
+
+        Task<HttpStatusCode> UpdateUserInfo(int id, string email, string title);
+
         /* OAuth2.0 */
         Task<ServiceResponse<object?>> GetCustomersAsync(string accessToken); 
 

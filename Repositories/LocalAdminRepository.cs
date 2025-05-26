@@ -193,6 +193,7 @@ namespace AuthService.Repositories
                             Console.WriteLine($"✅ ID: {notfoundemail.Id}, Email: {notfoundemail.Email}");
                             user.NetSuiteId = int.Parse(notfoundemail.Id!);
                             user.UpdatedAt = DateTime.UtcNow;
+                            /* Add email to NetSuite */
                         }
                     }
                 }

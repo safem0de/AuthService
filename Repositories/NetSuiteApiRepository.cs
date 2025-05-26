@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -87,7 +88,6 @@ namespace AuthService.Repositories
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await client.PostAsync(baseUrl, content);
-            // var responseBody = await response.Content.ReadAsStringAsync();
             Stream responseStream = await response.Content.ReadAsStreamAsync();
             string responseBody;
 
@@ -249,5 +249,108 @@ namespace AuthService.Repositories
             };
         }
 
+        public async Task<HttpStatusCode> UpdateUserInfo(int employeeId, string email, string title)
+        {
+            var accountId = _config["NetSuite:Account"]!;
+            var consumerKey = _config["NetSuite:ConsumerKey"]!;
+            var consumerSecret = _config["NetSuite:ConsumerSecret"]!;
+            var tokenId = _config["NetSuite:TokenId"]!;
+            var tokenSecret = _config["NetSuite:TokenSecret"]!;
+
+            var baseUrl = $"{NetSuiteConstants.GetEmployeesUrl(accountId)}/{employeeId}";
+
+            // 🔐 OAuth params
+            // var nonce = Guid.NewGuid().ToString("N");
+            var nonce = Guid.NewGuid().ToString("n").Substring(0, 12); // ตัดเหลือ 12 ตัว
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var signatureMethod = "HMAC-SHA256";
+            var version = "1.0";
+
+            // 🔧 Sorted dictionary for signature base string
+            var parameters = new SortedDictionary<string, string>
+            {
+                { "oauth_signature_method", signatureMethod },
+                { "oauth_consumer_key", consumerKey },
+                { "oauth_token", tokenId },
+                { "oauth_nonce", nonce },
+                { "oauth_timestamp", timestamp },
+                { "oauth_version", version },
+            };
+
+            // 🔐 Generate signature base string
+            var encodedParams = string.Join("&", parameters
+                .OrderBy(kvp => kvp.Key)
+                .Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
+
+            var signatureBaseString = $"PATCH&{Uri.EscapeDataString(baseUrl)}&{Uri.EscapeDataString(encodedParams)}";
+
+            Console.WriteLine("🔐 Signature Base String:");
+            Console.WriteLine(signatureBaseString);
+
+            // 🔐 Generate signing key and signature
+            var signingKey = $"{Uri.EscapeDataString(consumerSecret)}&{Uri.EscapeDataString(tokenSecret)}";
+            using var hasher = new HMACSHA256(Encoding.ASCII.GetBytes(signingKey));
+            var signatureBytes = hasher.ComputeHash(Encoding.ASCII.GetBytes(signatureBaseString));
+            var signature = Convert.ToBase64String(signatureBytes);
+
+            // ➕ Add signature to parameters
+            parameters.Add("oauth_signature", Uri.EscapeDataString(signature));
+
+            // ➕ Manual prepend realm
+            var authHeader = "OAuth realm=\"" + accountId + "\", " +
+                string.Join(", ", parameters.Select(kvp => $"{kvp.Key}=\"{kvp.Value}\""));
+
+            // 🚀 Send HTTP request
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("OAuth", authHeader.Replace("OAuth ", ""));
+            // ✅ Matching Postman headers
+            client.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
+            client.DefaultRequestHeaders.Add("Postman-Token", Guid.NewGuid().ToString()); // หรือใช้ random GUID
+            client.DefaultRequestHeaders.Add("User-Agent", "PostmanRuntime/7.44.0");
+            client.DefaultRequestHeaders.Add("Accept", "*/*");
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+            client.DefaultRequestHeaders.Add("Connection", "keep-alive");
+            client.DefaultRequestHeaders.Add("Prefer", "transient");
+
+            var payload = new
+            {
+                email = email,
+                title = title
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PatchAsync(baseUrl, content);
+
+            // Logging Request
+            Console.WriteLine("📤 REQUEST:");
+            Console.WriteLine($"POST {baseUrl}");
+            Console.WriteLine("Headers:");
+            foreach (var h in client.DefaultRequestHeaders)
+            {
+                Console.WriteLine($"  {h.Key}: {string.Join(", ", h.Value)}");
+            }
+            Console.WriteLine("Body:");
+            Console.WriteLine(json);
+
+            // Logging Response
+            Console.WriteLine("📥 RESPONSE:");
+            Console.WriteLine($"Status Code: {response.StatusCode}");
+            Console.WriteLine("Headers:");
+            foreach (var h in response.Headers)
+            {
+                Console.WriteLine($"  {h.Key}: {string.Join(", ", h.Value)}");
+            }
+            if (response.Content?.Headers != null)
+            {
+                foreach (var h in response.Content.Headers)
+                {
+                    Console.WriteLine($"  {h.Key}: {string.Join(", ", h.Value)}");
+                }
+            }
+
+            return response.StatusCode;
+
+        }
     }
 }

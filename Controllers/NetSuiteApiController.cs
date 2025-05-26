@@ -1,5 +1,7 @@
+using System.Net;
 using System.Text.Json;
 using AuthService.IRepositories;
+using AuthService.Models.Dtos;
 using AuthService.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +16,16 @@ namespace AuthService.Controllers
         public NetSuiteApiController(INetSuiteApiRepository apiRepo)
         {
             _apiRepo = apiRepo;
+        }
+        [HttpPatch("employee/{id}")]
+        public async Task<IActionResult> UpdateUserInfo(int id, [FromBody] UpdateEmployeeDto dto)
+        {
+            var statusCode = await _apiRepo.UpdateUserInfo(id, dto.Email, dto.Title);
+            
+            if (statusCode == HttpStatusCode.NoContent)
+                return NoContent(); // ✅ สอดคล้องกับ NetSuite
+            else
+                return StatusCode((int)statusCode);
         }
 
         [HttpPost("SuiteQL")]
