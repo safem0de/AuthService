@@ -28,6 +28,14 @@ namespace AuthService.Controllers
                 return StatusCode((int)statusCode);
         }
 
+        [HttpPost("CreateEmployee")]
+        public async Task<IActionResult> CreateUser([FromBody] EmployeeDto dto)
+        {
+            var employeeId = await _apiRepo.CreateUser(dto);
+
+            return Ok(employeeId);
+        }
+
         [HttpPost("SuiteQL")]
         public async Task<IActionResult> RunSuiteQL([FromBody] JsonElement body)
         {
@@ -44,7 +52,6 @@ namespace AuthService.Controllers
                 }
 
                 var query = qElement.GetString();
-
                 var result = await _apiRepo.CallSuiteQLAsync(query!);
 
                 return Ok(result);

@@ -1,4 +1,5 @@
 using System.Net;
+using AuthService.Models.Dtos;
 using AuthService.Services;
 
 namespace AuthService.IRepositories
@@ -9,6 +10,8 @@ namespace AuthService.IRepositories
         Task<ServiceResponse<object>> CallSuiteQLAsync(string query);
 
         Task<HttpStatusCode> UpdateUserInfo(int id, string email, string title);
+
+        Task<int> CreateUser(EmployeeDto employeeDto);
 
         /* OAuth2.0 */
         Task<ServiceResponse<object?>> GetCustomersAsync(string accessToken); 

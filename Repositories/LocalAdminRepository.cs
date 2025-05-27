@@ -14,7 +14,6 @@ namespace AuthService.Repositories
         private readonly AuthDbContext _context;
         private readonly TokenService _tokenService;
         private readonly ILdapRepository _ldapRepository;
-
         private readonly INetSuiteApiRepository _netSuiteApiRepository;
 
         public LocalAdminRepository(AuthDbContext context, TokenService tokenService, ILdapRepository ldapRepository, INetSuiteApiRepository netSuiteApiRepository)
@@ -155,8 +154,8 @@ namespace AuthService.Repositories
         public async Task SyncNetSuiteIdForAllUsersAsync()
         {
             var users = await _context.LocalAdmins
-                      .Where(u => u.IsActive && u.NetSuiteId == -1)
-                      .ToListAsync();
+                          .Where(u => u.IsActive && u.NetSuiteId == -1)
+                          .ToListAsync();
 
             foreach (var user in users)
             {
@@ -166,34 +165,65 @@ namespace AuthService.Repositories
                     var query = $"SELECT id, email FROM employee WHERE LOWER(entityid) = LOWER('{fullname}')";
                     var result = await _netSuiteApiRepository.CallSuiteQLAsync(query);
 
+                    if (!result.Success || result.Data == null)
+                    {
+                        Console.WriteLine($"❌ NetSuite query failed for {user.Username}");
+                        continue;
+                    }
+
+                    var json = result.Data.ToString();
                     var options = new JsonSerializerOptions
                     {
-                        WriteIndented = true,
                         PropertyNameCaseInsensitive = true
                     };
 
-                    var json = result.Data?.ToString();
-                    if (result.Success && !string.IsNullOrWhiteSpace(json))
-                    {
-                        var parsed = JsonSerializer.Deserialize<SuiteQLResponse<EmployeeDto>>(json);
-                        Console.WriteLine(JsonSerializer.Serialize(parsed, options));
+                    var parsed = JsonSerializer.Deserialize<SuiteQLResponse<EmployeeDto>>(json!, options);
+                    var employees = parsed?.Items ?? new List<EmployeeDto>();
 
-                        var notfoundemail = parsed!.Items?.FirstOrDefault(i => string.IsNullOrWhiteSpace(i.Email));
-                        var foundemail = parsed!.Items?.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.Email));
-                        
-                        if (foundemail != null)
+                    var matched = employees.FirstOrDefault();
+
+                    if (matched != null)
+                    {
+                        user.NetSuiteId = int.Parse(matched.Id!);
+                        user.UpdatedAt = DateTime.UtcNow;
+
+                        // ถ้าเจอ employee แล้วแต่ไม่มี email ให้ update
+                        if (string.IsNullOrWhiteSpace(matched.Email))
                         {
-                            Console.WriteLine($"✅ ID: {foundemail.Id}, Email: {foundemail.Email}");
-                            user.NetSuiteId = int.Parse(foundemail.Id!);
-                            user.UpdatedAt = DateTime.UtcNow;
+                            Console.WriteLine($"🛠 Updating missing email for employee id {matched.Id}");
+                            await _netSuiteApiRepository.UpdateUserInfo(user.NetSuiteId, user.Email, user.Title);
                         }
 
-                        if (notfoundemail != null)
+                        Console.WriteLine($"✅ Matched: ID={matched.Id}, Email={matched.Email}");
+                    }
+                    else
+                    {
+                        // ✅ ไม่มีพนักงานใน NetSuite → สร้างใหม่
+                        Console.WriteLine($"➕ Creating new NetSuite employee for {fullname}");
+
+                        var nameParts = fullname.Split(' ');
+                        var firstname = nameParts.ElementAtOrDefault(0) ?? "";
+                        var lastname = nameParts.ElementAtOrDefault(1) ?? "";
+
+                        var dto = new EmployeeDto
                         {
-                            Console.WriteLine($"✅ ID: {notfoundemail.Id}, Email: {notfoundemail.Email}");
-                            user.NetSuiteId = int.Parse(notfoundemail.Id!);
+                            Firstname = firstname,
+                            Lastname = lastname,
+                            Email = user.Email,
+                            Title = user.Title,
+                            Subsidiary = 1
+                        };
+
+                        var newId = await _netSuiteApiRepository.CreateUser(dto);
+                        if (newId > 0)
+                        {
+                            user.NetSuiteId = newId;
                             user.UpdatedAt = DateTime.UtcNow;
-                            /* Add email to NetSuite */
+                            Console.WriteLine($"✅ Created: ID={newId}, Name={firstname} {lastname}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"❌ Failed to create NetSuite employee for {fullname}");
                         }
                     }
                 }
@@ -205,6 +235,7 @@ namespace AuthService.Repositories
 
             await _context.SaveChangesAsync();
         }
+
 
         public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string password)
         {
