@@ -63,7 +63,7 @@ app.MapGet("/weatherforecast", () =>
 /* Add Seed Data */
 DbInitializer.Seeds(app.Services);
 
-app.Run();
+await app.RunAsync();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {

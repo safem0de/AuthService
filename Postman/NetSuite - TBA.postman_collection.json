@@ -1,0 +1,219 @@
+{
+	"info": {
+		"_postman_id": "42027b09-8241-46b3-a9d1-792eed01d6dc",
+		"name": "NetSuite - TBA",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16516544"
+	},
+	"item": [
+		{
+			"name": "TBA",
+			"item": [
+				{
+					"name": "Employee",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://{{account}}.suitetalk.api.netsuite.com/services/rest/record/v1/employee",
+							"protocol": "https",
+							"host": [
+								"{{account}}",
+								"suitetalk",
+								"api",
+								"netsuite",
+								"com"
+							],
+							"path": [
+								"services",
+								"rest",
+								"record",
+								"v1",
+								"employee"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch Employee Email",
+					"request": {
+						"method": "PATCH",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "SuiteQL",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Prefer",
+								"value": "Transient",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"q\": \"SELECT TOP 10 * FROM employee WHERE LOWER(email) = LOWER('sakarink@borneothai.com')\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{account}}.suitetalk.api.netsuite.com/services/rest/query/v1/suiteql",
+							"protocol": "https",
+							"host": [
+								"{{account}}",
+								"suitetalk",
+								"api",
+								"netsuite",
+								"com"
+							],
+							"path": [
+								"services",
+								"rest",
+								"query",
+								"v1",
+								"suiteql"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Purchase Order",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://{{account}}.suitetalk.api.netsuite.com/services/rest/record/v1/purchaseorder/1",
+							"protocol": "https",
+							"host": [
+								"{{account}}",
+								"suitetalk",
+								"api",
+								"netsuite",
+								"com"
+							],
+							"path": [
+								"services",
+								"rest",
+								"record",
+								"v1",
+								"purchaseorder",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "oauth1",
+		"oauth1": [
+			{
+				"key": "addEmptyParamsToSign",
+				"value": true,
+				"type": "boolean"
+			},
+			{
+				"key": "realm",
+				"value": "{{account}}",
+				"type": "string"
+			},
+			{
+				"key": "tokenSecret",
+				"value": "{{Token Secret}}",
+				"type": "string"
+			},
+			{
+				"key": "token",
+				"value": "{{Token Id}}",
+				"type": "string"
+			},
+			{
+				"key": "consumerSecret",
+				"value": "{{Consumer Secret}}",
+				"type": "string"
+			},
+			{
+				"key": "consumerKey",
+				"value": "{{Consumer Key}}",
+				"type": "string"
+			},
+			{
+				"key": "addParamsToHeader",
+				"value": true,
+				"type": "boolean"
+			},
+			{
+				"key": "signatureMethod",
+				"value": "HMAC-SHA256",
+				"type": "string"
+			},
+			{
+				"key": "version",
+				"value": "1.0",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

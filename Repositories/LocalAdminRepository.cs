@@ -237,7 +237,7 @@ namespace AuthService.Repositories
         }
 
 
-        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string password)
+        public async Task<ServiceResponse<LocalAdmin>> SyncUserAfterAdLoginAsync(string username, string plainPassword)
         {
             var response = new ServiceResponse<LocalAdmin>();
             try
@@ -267,7 +267,7 @@ namespace AuthService.Repositories
                     else
                     {
                         // 👇 ถ้าเคย login แล้ว → เช็คว่า password เปลี่ยนไหม
-                        var newHash = PasswordHasher.Hash(password, existing.Salt);
+                        var newHash = PasswordHasher.Hash(plainPassword, existing.Salt);
                         if (newHash != existing.PasswordHash)
                         {
                             shouldUpdatePassword = true;
@@ -283,7 +283,7 @@ namespace AuthService.Repositories
                     {
                         var newSalt = Guid.NewGuid().ToString("N");
                         existing.Salt = newSalt;
-                        existing.PasswordHash = PasswordHasher.Hash(password, newSalt);
+                        existing.PasswordHash = PasswordHasher.Hash(plainPassword, newSalt);
                     }
 
                     existing.UpdatedAt = DateTime.UtcNow;
